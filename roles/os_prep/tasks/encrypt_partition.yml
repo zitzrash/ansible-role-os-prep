@@ -32,7 +32,7 @@
         | list
       }}
 
-- name: Display partition to
+- name: Display partition to be encrypted
   ansible.builtin.debug:
     msg: "Partition {{ free_partitions }} will be encrypted"
   when: free_partitions | length > 0

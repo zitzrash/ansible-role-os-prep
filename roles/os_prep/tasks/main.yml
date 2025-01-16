@@ -1,0 +1,30 @@
+---
+- name: Install packages
+  ansible.builtin.import_tasks: install_packages.yml
+  tags: [init, install_packages]
+
+- name: Encrypt the second disk
+  ansible.builtin.import_tasks: encrypt_disk.yml
+  vars:
+    target_disk: "{{ second_disk }}"
+  tags: [init, encrypt_disk]
+
+- name: Encrypt the partition next to the root partition
+  ansible.builtin.import_tasks: encrypt_partition.yml
+  tags: [init, encrypt_partition]
+
+- name: Disable C-state for all CPUs
+  ansible.builtin.import_tasks: disable_c_state.yml
+  tags: [init, disable_c_state]
+
+- name: Switch CPU to performance mode
+  ansible.builtin.import_tasks: cpu_performance.yml
+  tags: [init, cpu_perf]
+
+- name: Rename active network interface to net0
+  ansible.builtin.import_tasks: rename_network.yml
+  tags: [init, rename_net]
+
+- name: Display CPU and Hyper-Threading information
+  ansible.builtin.import_tasks: display_cpu_info.yml
+  tags: [init, disable_c_state, cpu_perf]

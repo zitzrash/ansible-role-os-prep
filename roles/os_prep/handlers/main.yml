@@ -1,0 +1,29 @@
+---
+- name: Reload disk partitions
+  ansible.builtin.command: partprobe
+
+- name: Update GRUB
+  ansible.builtin.command: update-grub
+  notify: Reboot server
+
+- name: Restart cpufrequtils
+  ansible.builtin.service:
+    name: cpufrequtils
+    state: restarted
+
+- name: Restart network
+  ansible.builtin.service:
+    name: systemd-networkd
+    state: restarted
+
+- name: Netplan Apply
+  ansible.builtin.command: netplan apply
+  async: 45
+  poll: 0
+
+- name: Reload udev rules
+  ansible.builtin.shell: udevadm control --reload && udevadm trigger
+
+- name: Reboot server
+  ansible.builtin.reboot:
+    msg: "Rebooting machine in 5 seconds"

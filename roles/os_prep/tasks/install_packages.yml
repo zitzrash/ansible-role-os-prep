@@ -1,0 +1,15 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - cryptsetup
+      - cpufrequtils
+      - iproute2
+      - parted
+    state: present
+  when: ansible_os_family == "Debian"

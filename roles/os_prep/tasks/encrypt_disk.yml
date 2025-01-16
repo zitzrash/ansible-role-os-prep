@@ -1,0 +1,28 @@
+---
+- name: Check if the disk/partition exists
+  ansible.builtin.stat:
+    path: "{{ target_disk }}"
+  register: disk_stat
+
+- name: Check if the disk is already encrypted
+  ansible.builtin.command: cryptsetup status encrypted_disk
+  register: disk_status
+  failed_when: disk_status.rc not in [0, 4]
+  changed_when: False
+
+- name: Fail if disk/partition does not exist
+  ansible.builtin.fail:
+    msg: "Disk/partition {{ target_disk }} does not exist."
+  when: not disk_stat.stat.exists
+
+- name: Encrypt the disk/partition using LUKS
+  ansible.builtin.command: >
+    echo "{{ luks_password }}" | cryptsetup luksFormat {{ target_disk }} --batch-mode
+  when: disk_stat.stat.exists
+  notify: Reload disk partitions
+
+- name: Open the encrypted disk/partition
+  ansible.builtin.command: >
+    echo "{{ luks_password }}" | cryptsetup open {{ target_disk }} {{ target_disk.split('/')[-1] }}_crypt
+  when: disk_stat.stat.exists
+  notify: Reload disk partitions

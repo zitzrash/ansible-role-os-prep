@@ -1,0 +1,43 @@
+---
+- name: Gather mounts facts
+  ansible.builtin.setup:
+    filter: ansible_mounts
+
+- name: Set root partition device
+  ansible.builtin.set_fact:
+    root_partition_device: "{{ ansible_facts.mounts | selectattr('mount', '==', '/') | map(attribute='device') | first }}"
+
+- name: Set root disk
+  ansible.builtin.set_fact:
+    root_disk: "{{ root_partition_device | basename | regex_replace('(\\D+)(\\d+)', '\\1') }}"
+
+- name: Gather lsblk output
+  ansible.builtin.shell: lsblk -o NAME,MOUNTPOINT,FSTYPE --json
+  register: lsblk_output
+  check_mode: no
+  changed_when: false
+
+- name: Set free partitions on root disk
+  ansible.builtin.set_fact:
+    free_partitions: >
+      {{
+        (lsblk_output.stdout|from_json).blockdevices
+        | selectattr('name', 'equalto', root_disk)
+        | map(attribute='children')
+        | list
+        | flatten
+        | selectattr('mountpoint', '==', None)
+        | selectattr('fstype', '==', 'ext4')
+        | map(attribute='name')
+        | list
+      }}
+
+- name: Display partition to
+  ansible.builtin.debug:
+    msg: "Partition {{ free_partitions }} will be encrypted"
+  when: free_partitions | length > 0
+
+- name: Encrypt free partitions on root disk
+  ansible.builtin.command: >
+    echo "{{ luks_password }}" | cryptsetup luksFormat {{ item }} --batch-mode
+  when: free_partitions | length > 0

@@ -1,0 +1,25 @@
+---
+- name: Gather CPU information
+  ansible.builtin.command: lscpu
+  register: lscpu_output
+  check_mode: no
+
+- name: Check for Hyper-Threading (alternative method)
+  ansible.builtin.shell: |
+    cores=$(grep -m 1 'cpu cores' /proc/cpuinfo | awk '{print $4}')
+    siblings=$(grep -m 1 'siblings' /proc/cpuinfo | awk '{print $3}')
+    if [ "$siblings" -gt "$cores" ]; then
+      echo "Hyper-Threading is enabled"
+    else
+      echo "Hyper-Threading is disabled"
+    fi
+  register: hyperthreading_status
+  check_mode: no
+
+- name: Display CPU information
+  ansible.builtin.debug:
+    msg: 
+      - 'CPU Information from lscpu: '
+      - "{{ lscpu_output.stdout_lines }}"
+      - 'Hyper-Threading Status: '
+      - "{{ hyperthreading_status.stdout_lines }}"

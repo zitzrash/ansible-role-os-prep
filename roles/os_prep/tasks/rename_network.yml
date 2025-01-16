@@ -1,0 +1,52 @@
+---
+- name: Get the active network interface
+  ansible.builtin.shell: "ip -o link show | awk -F': ' '{print $2}' | grep -E -v 'lo|docker|veth' | head -n 1"
+  register: interface_name
+  check_mode: no
+  changed_when: false
+
+- name: Update Netplan configuration to rename interface
+  block:
+    - name: Find the Netplan configuration file
+      ansible.builtin.shell: "ls /etc/netplan/*.yaml"
+      register: netplan_file
+      changed_when: False
+      check_mode: no
+    
+    - debug: msg="{{ netplan_file }}"
+
+    - name: Modify the Netplan configuration
+      ansible.builtin.replace:
+        path: "{{ netplan_file.stdout }}"
+        regexp: '^(\\s*)([a-zA-Z0-9]+):'
+        replace: '\1net0:'
+      notify:
+        - Netplan Apply
+
+    - name: Ensure Netplan configuration is valid
+      ansible.builtin.command: netplan generate
+  when: interface_name.stdout != "net0"
+
+- name: Add udev rule for renaming
+  ansible.builtin.copy:
+    content: |
+      SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="{{ ansible_facts['default_ipv4']['macaddress'] }}", NAME="net0"
+    dest: /etc/udev/rules.d/70-persistent-net.rules
+  notify:
+    - Reload udev rules
+
+- name: Apply the renamed interface in current session
+  ansible.builtin.shell: |
+    ip link set dev {{ interface_name.stdout }} down
+    ip link set dev {{ interface_name.stdout }} name net0
+    ip link set dev net0 up
+  when: interface_name.stdout != "net0"
+
+- name: Gather renamed interface information
+  ansible.builtin.command: ip addr show net0
+  register: if_info
+
+- name: Display interface information
+  ansible.builtin.debug:
+    msg: "{{ if_info.stdout_lines }}"
+

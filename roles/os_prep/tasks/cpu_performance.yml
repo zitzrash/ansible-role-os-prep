@@ -1,0 +1,12 @@
+---
+- name: Switch CPU mode to performance
+  command: 'cpupower frequency-set -g performance'
+  failed_when: false
+
+# - name: Set CPU governor to performance
+#   ansible.builtin.lineinfile:
+#     path: /etc/default/cpufrequtils
+#     regexp: '^GOVERNOR='
+#     line: 'GOVERNOR=performance'
+#     state: present
+#   notify: Restart cpufrequtils

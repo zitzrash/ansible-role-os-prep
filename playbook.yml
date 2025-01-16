@@ -1,0 +1,6 @@
+---
+- name: Prepare OS for operation
+  hosts: "{{ var_host | default(servers) }}"
+  become: yes
+  roles:
+    - role: os_prep
